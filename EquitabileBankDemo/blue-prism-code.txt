@@ -1,0 +1,42 @@
+﻿using System;
+using System.Data;
+using System.Net.Http;
+using HtmlAgilityPack;
+
+// Input: string url
+// Output: DataTable rates
+
+rates = new DataTable();
+
+using (HttpClient client = new HttpClient())
+{
+    var html = client.GetStringAsync(url).GetAwaiter().GetResult();  // Sync call
+
+    HtmlDocument document = new HtmlDocument();
+    document.LoadHtml(html);
+
+    var tableNode = document.DocumentNode.SelectSingleNode("//table[contains(@class, 'eq-table') and contains(@class, 'k-table')]");
+
+    if (tableNode == null)
+        throw new Exception("Table not found.");
+
+    var headerNodes = tableNode.SelectNodes(".//tr[1]/th");
+    foreach (var headerNode in headerNodes)
+    {
+        rates.Columns.Add(headerNode.InnerText.Trim());
+    }
+
+    var rowNodes = tableNode.SelectNodes(".//tr[position() > 1]");
+    foreach (var rowNode in rowNodes)
+    {
+        var cellNodes = rowNode.SelectNodes("./th|./td");
+        DataRow row = rates.NewRow();
+
+        for (int i = 0; i < cellNodes.Count && i < rates.Columns.Count; i++)
+        {
+            row[i] = cellNodes[i].InnerText.Trim();
+        }
+
+        rates.Rows.Add(row);
+    }
+}
